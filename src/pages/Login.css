@@ -1,0 +1,63 @@
+.login-content {
+  --background: transparent;
+}
+
+.login-background {
+  background-image: url('/assets/img/12.jpg'); /* Reemplazá con tu imagen */
+  background-size: cover;
+  background-position: center;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 400px;
+  padding: 20px;
+}
+
+.login-logo-container {
+  margin-bottom: 20px;
+}
+
+.login-logo {
+  width: 220px; /* Más largo para un logo horizontal */
+  height: auto;
+}
+
+.login-card {
+  width: 100%;
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.login-button-container {
+  margin-top: 20px;
+}
+
+.error-message {
+  text-align: center;
+  margin-top: 10px;
+}
+.login-form ion-list {
+  background: transparent !important;
+  box-shadow: none;
+  border: none;
+  padding: 0;
+}
+
+.login-form ion-item {
+  --background: transparent;
+  --highlight-height: 1px; /* la línea activa al enfocar */
+  --highlight-color-focused: var(--ion-color-primary); /* color de línea al enfocar */
+  --inner-border-width: 0; /* evita doble borde */
+  border-bottom: 1px solid var(--ion-color-medium); /* línea inferior siempre visible */
+}
