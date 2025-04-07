@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { BarcodeScanner, Barcode } from '@capacitor-mlkit/barcode-scanning';
 import {
-  IonCard, IonPage, IonButtons, IonMenuButton, IonContent, IonHeader, IonToolbar,
+ IonCardContent ,IonText, IonCard, IonPage, IonButtons, IonMenuButton, IonContent, IonHeader, IonToolbar,
   IonTitle, IonItem, IonLabel, IonInput, IonFabButton, IonIcon, IonAlert,
   IonButton, IonRow, IonCol, IonGrid, IonSelect, IonSelectOption
 } from '@ionic/react';
-import { trash } from 'ionicons/icons';
+import { trash, informationCircle, barcodeOutline } from 'ionicons/icons';
 import { procesos } from '../constants/procesos';
 import { verificarBarra,guardar } from '../constants/escaneados';
+
 
 const Home: React.FC = () => {
   const [isSupported, setIsSupported] = useState(false);
@@ -99,9 +100,8 @@ const Home: React.FC = () => {
     }
   
     const codigo = scannedBarcodes[0].rawValue;
-setUltimoCodigoEscaneado(codigo);
+    setUltimoCodigoEscaneado(codigo);
 
-    const clienteid = sessionStorage.getItem("clienteid");
   
     try {
       const resultado = await verificarBarra(codigo);
@@ -161,10 +161,11 @@ setUltimoCodigoEscaneado(codigo);
 
   return (
     <>
-      <IonPage id="about-page" className="page-background">
+      <IonPage id="about-page" >
 
         <IonHeader className="ion-no-border">
-          <IonToolbar>
+        <IonToolbar >
+
             <IonButtons slot="start">
               <IonMenuButton />
               <div style={{ marginLeft: '12px', fontSize: '18px', fontWeight: 'bold' }}>
@@ -177,7 +178,7 @@ setUltimoCodigoEscaneado(codigo);
           </IonToolbar>
   
           {(bienvenida || usuario) && (
-            <div style={{ padding: '8px 16px', background: '#f4f4f4', fontSize: '15px' }}>
+            <div style={{ padding: '8px 16px', background: '#d3d3d3', color: 'black', fontSize: '15px' }}>
               {bienvenida && <span><strong>Bienvenida:</strong> {bienvenida}</span>}
               {bienvenida && usuario && <span> | </span>}
               {usuario && <span><strong>Usuario:</strong> {usuario}</span>}
@@ -185,9 +186,8 @@ setUltimoCodigoEscaneado(codigo);
           )}
         </IonHeader>
   
-        <IonContent
-          className="ion-padding"
-        >
+        <IonContent className="ion-padding" style={{ backgroundColor: 'white' }}>
+
           <IonCard style={{ padding: '20px', backdropFilter: 'blur(10px)', background: 'rgba(255, 255, 255, 0.85)', borderRadius: '16px' }}>
             <IonItem>
               <IonLabel>Procesos</IonLabel>
@@ -206,16 +206,28 @@ setUltimoCodigoEscaneado(codigo);
             </IonButton>
   
             {mensaje && (
-              <div style={{ marginTop: '10px', color: '#007bff' }}>
-                <strong>{mensaje}</strong>
-              </div>
-            )}
-  
-  {ultimoCodigoEscaneado && (
-  <div style={{ marginTop: '20px', padding: '10px', background: '#e0f7fa', borderRadius: '8px', fontWeight: 'bold' }}>
-    Último escaneado: <span style={{ color: '#007bff' }}>{ultimoCodigoEscaneado}</span>
-  </div>
+  <IonCard color="primary" style={{ marginTop: '16px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
+    <IonCardContent style={{ display: 'flex', alignItems: 'center' }}>
+      <IonIcon icon={informationCircle} style={{ fontSize: '22px', marginRight: '10px' }} />
+      <IonText color="light">
+        <strong>{mensaje}</strong>
+      </IonText>
+    </IonCardContent>
+  </IonCard>
 )}
+
+{ultimoCodigoEscaneado && (
+  <IonCard color="tertiary" style={{ marginTop: '20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
+    <IonCardContent style={{ display: 'flex', alignItems: 'center' }}>
+      <IonIcon icon={barcodeOutline} style={{ fontSize: '22px', marginRight: '10px' }} />
+      <IonText color="dark">
+        <strong>Último escaneado:</strong>&nbsp;
+        <IonText color="primary">{ultimoCodigoEscaneado}</IonText>
+      </IonText>
+    </IonCardContent>
+  </IonCard>
+)}
+
 
             <div style={{ marginTop: '20px' }}>
               <IonRow>
