@@ -222,7 +222,7 @@ const Home: React.FC = () => {
       <IonIcon icon={barcodeOutline} style={{ fontSize: '22px', marginRight: '10px' }} />
       <IonText color="dark">
         <strong>Último escaneado:</strong>&nbsp;
-        <IonText color="primary">{ultimoCodigoEscaneado}</IonText>
+        <span style={{ color: 'white', fontWeight: 'bold' }}>{ultimoCodigoEscaneado}</span>
       </IonText>
     </IonCardContent>
   </IonCard>
