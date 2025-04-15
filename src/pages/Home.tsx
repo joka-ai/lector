@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { BarcodeScanner, Barcode } from '@capacitor-mlkit/barcode-scanning';
 import {
  IonCardContent ,IonText, IonCard, IonPage, IonButtons, IonMenuButton, IonContent, IonHeader, IonToolbar,
-  IonTitle, IonItem, IonLabel, IonInput, IonFabButton, IonIcon, IonAlert,
-  IonButton, IonRow, IonCol, IonGrid, IonSelect, IonSelectOption
+  IonTitle, IonItem, IonLabel, IonIcon, IonAlert,
+  IonButton, IonRow, IonCol,  IonSelect, IonSelectOption
 } from '@ionic/react';
-import { trash, informationCircle, barcodeOutline } from 'ionicons/icons';
+import { trash, barcodeOutline } from 'ionicons/icons';
 import { procesos } from '../constants/procesos';
 import { verificarBarra,guardar } from '../constants/escaneados';
 import './Home.css';
@@ -53,6 +53,7 @@ const Home: React.FC = () => {
 
       } catch (error) {
         setError("Hubo un error al cargar los procesos.");
+        setAlertHeader("Error");
         setShowAlert(true);
       } finally {
         setIsLoading(false);
@@ -66,8 +67,9 @@ const Home: React.FC = () => {
     const fecha = new Date();
     const fechaStr = fecha.toLocaleDateString();
     const horaStr = fecha.toLocaleTimeString();
-    const empresa = sessionStorage.getItem("nombre");
-    const operador = sessionStorage.getItem("operador");
+    const empresa = sessionStorage.getItem("nombre_cliente");
+    const usuario = sessionStorage.getItem("nombre");
+    const correo = sessionStorage.getItem("email");
     const totalPrendas = barcodes.length;
   
     doc.setFontSize(12);
@@ -90,21 +92,38 @@ const Home: React.FC = () => {
       doc.text('Registro de prendas', 105, 60, { align: 'center' });
   
       doc.setFontSize(12);
-      doc.text(`Empresa: ${empresa}`, 20, 70);
-      doc.text(`Operador: ${operador}`, 20, 80);
+      const procesoTexto = procesosList.find(p => p.id === selectedProceso)?.descripcion || '---';
+      doc.text(`Proceso: ${procesoTexto}`, 20, 70);
+      doc.text(`Empresa: ${empresa}`, 20, 80);
+      doc.text(`Usuario: ${usuario} (${correo})`, 20, 90);
   
       const headers = [['Código', 'Descripción', 'Cantidad de lavados']];
       const rows = barcodes.map(b => [b.codigo, b.descripcion, b.cantlavados]);
   
       autoTable(doc, {
-        startY: 90,
+        startY: 95,
         head: headers,
         body: rows,
         theme: 'grid',
-        styles: { halign: 'center', font: 'helvetica' },
+        styles: { font: 'helvetica', fontSize: 10 },
         headStyles: { fillColor: [220, 220, 220] },
+        columnStyles: {
+          0: { halign: 'right' },   // Código centrado
+          1: { halign: 'left' },     // Descripción izquierda
+          2: { halign: 'right' },    // Cantidad derecha
+        },
+        didParseCell: function (data) {
+          if (data.section === 'head') {
+            if (data.column.index === 0) {
+              data.cell.styles.halign = 'right';
+            } else if (data.column.index === 1) {
+              data.cell.styles.halign = 'left';
+            } else if (data.column.index === 2) {
+              data.cell.styles.halign = 'right';
+            }
+          }
+        }
       });
-  
          // Total de prendas
     const finalY = (doc as any).lastAutoTable.finalY;
     doc.text(`Total de prendas: ${totalPrendas}`, 20, finalY + 10);
@@ -133,14 +152,13 @@ doc.text('Aclaración', 160, firmaY + 6, { align: 'center' });
       const savedFile = await Filesystem.writeFile({
         path: fileName,
         data: base64data,
-        directory: Directory.Documents,
+        directory: Directory.Data,
       });
 
-      const uri = Capacitor.convertFileSrc(savedFile.uri);
-
+      const uri = savedFile.uri; 
       FileOpener.open(uri, 'application/pdf')
-        .then(() => console.log('PDF abierto'))
-        .catch(err => console.error('Error al abrir PDF:', err));
+      .then(() => console.log('PDF abierto'))
+      .catch(err => console.error('Error al abrir PDF:', err));
     } catch (err) {
       console.error('Error al guardar o abrir el archivo:', err);
     }
@@ -159,6 +177,7 @@ doc.text('Aclaración', 160, firmaY + 6, { align: 'center' });
   const guardarTodos = async () => {
     if (!selectedProceso) {
       setError("Selecciona un proceso antes de guardar.");
+      setAlertHeader("Error");
       setShowAlert(true);
       return;
     }
@@ -179,19 +198,17 @@ doc.text('Aclaración', 160, firmaY + 6, { align: 'center' });
         setError("Datos guardados correctamente.");
         setAlertHeader("Éxito");
         setShowAlert(true);
-        setTimeout(() => {
-         // generarPDF(nromovRecibido);
-        }, 500); // medio segundo de espera
-      
-        setBarcodes([]); 
       } else {
         setError(respuesta.message || "Error al guardar.");
+        setAlertHeader("Error");
         setShowAlert(true);
+        setNroMov(null);
       }
     } catch (error) {
       const mensajeError =
         error instanceof Error ? error.message : "Error desconocido";
       setError(`Ocurrió un error al guardar los datos: ${mensajeError}`);
+      setAlertHeader("Error");
       setShowAlert(true);
     }
   };
@@ -204,6 +221,7 @@ doc.text('Aclaración', 160, firmaY + 6, { align: 'center' });
   const scan = async () => {
     const granted = await requestPermissions();
     if (!granted) {
+      setAlertHeader("Error");
       setShowAlert(true);
       return;
     }
@@ -215,6 +233,7 @@ doc.text('Aclaración', 160, firmaY + 6, { align: 'center' });
       if (scannedBarcodes.length === 0 || !scannedBarcodes[0].rawValue) {
         reproducirSonido("assets/sonidos/error.mp3");
         setError("No se detectó un código válido.");
+        setAlertHeader("Error");
         setShowAlert(true);
         return;
       }
@@ -231,6 +250,7 @@ doc.text('Aclaración', 160, firmaY + 6, { align: 'center' });
           if (resultado.data?.cliente && resultado.data?.cliente.id !== clienteid) {
             reproducirSonido("assets/sonidos/error.mp3");
             setError(`El código pertenece a otro cliente: ${resultado.data.cliente.nombre}`);
+            setAlertHeader("Error");
             setShowAlert(true);
             return;
           }
@@ -239,25 +259,24 @@ doc.text('Aclaración', 160, firmaY + 6, { align: 'center' });
             const descripcion = resultado.data?.Descripcion || "Descripción no disponible";
             const cantlavados = resultado.data?.cantlavados || "0";
   
-            // ✅ Usamos la versión actualizada del estado en el callback
+    
             setBarcodes((prev) => {
               const yaExiste = prev.some((b) => b.codigo === codigo);
   
               if (!yaExiste) {
                 reproducirSonido("assets/sonidos/bien.mp3");
-                //setError(`Código ${codigo} agregado correctamente.`);
-                //setAlertHeader("Éxito");
-                //setShowAlert(true);
+                
   
                 // Volvemos a escanear luego de un segundo
                 setTimeout(() => {
                   scan();
-                }, 1000);
+                }, 500);
   
                 return [...prev, { codigo, descripcion,cantlavados }];
               } else {
                 reproducirSonido("assets/sonidos/error.mp3");
                 setError(`El código ${codigo} ya fue escaneado.`);
+                setAlertHeader("Error");
                 setShowAlert(true);
                 return prev; // No agregamos nada
               }
@@ -266,22 +285,25 @@ doc.text('Aclaración', 160, firmaY + 6, { align: 'center' });
           } else {
             reproducirSonido("assets/sonidos/error.mp3");
             setError(resultado.message || "Código verificado.");
+            setAlertHeader("Error");
             setShowAlert(true);
           }
   
         } else {
           reproducirSonido("assets/sonidos/error.mp3");
           setError(resultado?.message || `El código ${codigo} no fue encontrado.`);
+          setAlertHeader("Error");
           setShowAlert(true);
         }
   
       } catch (e) {
         reproducirSonido("assets/sonidos/error.mp3");
         setError("Error al verificar el código");
+        setAlertHeader("Error");
         setShowAlert(true);
       }
   
-    }, 1000); 
+    }, 500); 
   };
   
   
@@ -412,11 +434,17 @@ doc.text('Aclaración', 160, firmaY + 6, { align: 'center' });
           {
             text: 'OK',
             role: 'cancel',
+            handler: () => {
+              setBarcodes([]);
+              setNroMov(null);
+            },
           },
           {
             text: 'Obtener PDF',
             handler: () => {
               generarPDF(nroMov);
+              setBarcodes([]); 
+              setNroMov(null);
             },
           },
         ]
@@ -428,8 +456,6 @@ doc.text('Aclaración', 160, firmaY + 6, { align: 'center' });
         ]
   }
 />
-
-
 
           </IonCard>
         </IonContent>
