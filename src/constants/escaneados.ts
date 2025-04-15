@@ -1,5 +1,7 @@
 import { API_BASE_URL, API_AUTH_HEADERS } from "./config";
 
+
+
 export const verificarBarra = async (barra: string) => {
   try {
     if (!barra) {

@@ -1,0 +1,8 @@
+.alert-success .alert-wrapper {
+    border-bottom: 12px solid green;
+  }
+  
+  .alert-error .alert-wrapper {
+    border-bottom: 12px solid red;
+  }
+  

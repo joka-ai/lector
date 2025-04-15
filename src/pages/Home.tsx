@@ -8,13 +8,18 @@ import {
 import { trash, informationCircle, barcodeOutline } from 'ionicons/icons';
 import { procesos } from '../constants/procesos';
 import { verificarBarra,guardar } from '../constants/escaneados';
+import './Home.css';
 
+import { jsPDF } from "jspdf";
+import autoTable from 'jspdf-autotable';
+
+import { Filesystem, Directory, Encoding  } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
+import { FileOpener } from '@awesome-cordova-plugins/file-opener';
 
 const Home: React.FC = () => {
   const [isSupported, setIsSupported] = useState(false);
-  const [barcodes, setBarcodes] = useState<{ codigo: string, descripcion: string }[]>([]);
-  const [mensaje, setMensaje] = useState<string | null>(null);
-
+  const [barcodes, setBarcodes] = useState<{ codigo: string, descripcion: string; cantlavados: string;}[]>([]);
   const [showAlert, setShowAlert] = useState(false);
   const [selectedProceso, setSelectedProceso] = useState<string | undefined>(undefined);
   const [procesosList, setProcesosList] = useState<any[]>([]); 
@@ -23,7 +28,9 @@ const Home: React.FC = () => {
   const bienvenida = sessionStorage.getItem("nombre");
   const usuario = sessionStorage.getItem("nombre_cliente");
   const [ultimoCodigoEscaneado, setUltimoCodigoEscaneado] = useState<string | null>(null);
-
+  const [alertHeader, setAlertHeader] = useState("");
+  const [nroMov, setNroMov] = useState<string | null>(null);
+  
 
   useEffect(() => {
     const checkSupport = async () => {
@@ -39,6 +46,11 @@ const Home: React.FC = () => {
       try {
         const procesosData = await procesos();
         setProcesosList(procesosData);
+     
+        if (procesosData.length > 0) {
+          setSelectedProceso(procesosData[0].id);
+        }
+
       } catch (error) {
         setError("Hubo un error al cargar los procesos.");
         setShowAlert(true);
@@ -48,17 +60,109 @@ const Home: React.FC = () => {
     };
     fetchProcesos();
   }, []);
-  
 
+  const generarPDF = async (lote: string | null = 'lote') => { // Asegúrate de que la función sea async
+    const doc = new jsPDF();
+    const fecha = new Date();
+    const fechaStr = fecha.toLocaleDateString();
+    const horaStr = fecha.toLocaleTimeString();
+    const empresa = sessionStorage.getItem("nombre");
+    const operador = sessionStorage.getItem("operador");
+    const totalPrendas = barcodes.length;
+  
+    doc.setFontSize(12);
+  
+    // Agregar el logo desde la ruta /assets/img/logo.png
+    const logo = new Image();
+    logo.src = 'assets/img/logo.png';  // Asegúrate de que esta ruta sea correcta para tu aplicación
+  
+    // Esperar a que la imagen del logo esté cargada
+    logo.onload = async () => {  // La función onload también puede ser async
+      // Agregar el logo en el lado izquierdo (haciendo la imagen más ancha)
+      doc.addImage(logo, 'PNG', 10, 10, 50, 30); // x, y, ancho, alto (ancho más grande)
+  
+      // Ahora añadir el texto del lote al lado derecho
+      doc.text(`Lote Nº: ${lote}`, 200, 20, { align: 'right' });
+      doc.text(`Fecha: ${fechaStr}`, 200, 30, { align: 'right' });
+      doc.text(`Hora: ${horaStr}`, 200, 40, { align: 'right' });
+  
+      doc.setFontSize(14);
+      doc.text('Registro de prendas', 105, 60, { align: 'center' });
+  
+      doc.setFontSize(12);
+      doc.text(`Empresa: ${empresa}`, 20, 70);
+      doc.text(`Operador: ${operador}`, 20, 80);
+  
+      const headers = [['Código', 'Descripción', 'Cantidad de lavados']];
+      const rows = barcodes.map(b => [b.codigo, b.descripcion, b.cantlavados]);
+  
+      autoTable(doc, {
+        startY: 90,
+        head: headers,
+        body: rows,
+        theme: 'grid',
+        styles: { halign: 'center', font: 'helvetica' },
+        headStyles: { fillColor: [220, 220, 220] },
+      });
+  
+         // Total de prendas
+    const finalY = (doc as any).lastAutoTable.finalY;
+    doc.text(`Total de prendas: ${totalPrendas}`, 20, finalY + 10);
+
+// Posicionar la firma al final de la página actual
+const pageHeight = doc.internal.pageSize.getHeight();
+let firmaY = pageHeight - 40; // 40px desde el borde inferior
+
+// Dibujar líneas
+doc.line(40, firmaY, 100, firmaY);   // Línea Firma
+doc.line(120, firmaY, 200, firmaY);  // Línea Aclaración
+
+// Texto debajo, centrado
+doc.text('Firma', 70, firmaY + 6, { align: 'center' });
+doc.text('Aclaración', 160, firmaY + 6, { align: 'center' });
+
+  // 🔥 Acá recién generamos el PDF una vez que todo se cargó
+  const pdfBlob = await doc.output('blob');
+  const reader = new FileReader();
+
+  reader.onloadend = async () => {
+    const base64data = (reader.result as string).split(',')[1];
+    const fileName = `registro_prendas_${Date.now()}.pdf`;
+
+    try {
+      const savedFile = await Filesystem.writeFile({
+        path: fileName,
+        data: base64data,
+        directory: Directory.Documents,
+      });
+
+      const uri = Capacitor.convertFileSrc(savedFile.uri);
+
+      FileOpener.open(uri, 'application/pdf')
+        .then(() => console.log('PDF abierto'))
+        .catch(err => console.error('Error al abrir PDF:', err));
+    } catch (err) {
+      console.error('Error al guardar o abrir el archivo:', err);
+    }
+  };
+
+  reader.readAsDataURL(pdfBlob);
+    };
+  };
+  
+  
+  
   const handleProcesoChange = (e: any) => {
     setSelectedProceso(e.detail.value);
   };
 
   const guardarTodos = async () => {
     if (!selectedProceso) {
-      setMensaje("Selecciona un proceso antes de guardar.");
+      setError("Selecciona un proceso antes de guardar.");
+      setShowAlert(true);
       return;
     }
+    
   
     let datosAGuardar = barcodes.map((b) => ({
       codigo: b.codigo,
@@ -70,10 +174,19 @@ const Home: React.FC = () => {
       const respuesta = await guardar(datosAGuardar, selectedProceso);
   
       if (respuesta.status) {
-        setMensaje("Datos guardados correctamente.");
-        setBarcodes([]); // Vaciar la lista después de guardar
+        const nromovRecibido = respuesta.data; 
+        setNroMov(nromovRecibido); 
+        setError("Datos guardados correctamente.");
+        setAlertHeader("Éxito");
+        setShowAlert(true);
+        setTimeout(() => {
+         // generarPDF(nromovRecibido);
+        }, 500); // medio segundo de espera
+      
+        setBarcodes([]); 
       } else {
-        setMensaje(respuesta.message || "Error al guardar.");
+        setError(respuesta.message || "Error al guardar.");
+        setShowAlert(true);
       }
     } catch (error) {
       const mensajeError =
@@ -83,7 +196,11 @@ const Home: React.FC = () => {
     }
   };
 
-  
+  const reproducirSonido = (ruta: string) => {
+    const audio = new Audio(ruta);
+    audio.play();
+  };
+
   const scan = async () => {
     const granted = await requestPermissions();
     if (!granted) {
@@ -91,61 +208,84 @@ const Home: React.FC = () => {
       return;
     }
   
-    const { barcodes: scannedBarcodes } = await BarcodeScanner.scan();
+    // Espera 5 segundos antes de escanear
+    setTimeout(async () => {
+      const { barcodes: scannedBarcodes } = await BarcodeScanner.scan();
   
-    if (scannedBarcodes.length === 0 || !scannedBarcodes[0].rawValue) {
-      setError("No se detectó un código válido.");
-      setShowAlert(true);
-      return;
-    }
-  
-    const codigo = scannedBarcodes[0].rawValue;
-    setUltimoCodigoEscaneado(codigo);
-
-  
-    try {
-      const resultado = await verificarBarra(codigo);
-    
-      if (resultado && resultado.status) {
-        const clienteid = sessionStorage.getItem("clienteid");
-    
-        // Si el código pertenece a otro cliente
-        if (
-          resultado.data?.cliente &&
-          resultado.data?.cliente.id !== clienteid
-        ) {
-          setMensaje(`El código pertenece a otro cliente: ${resultado.data.cliente.nombre}`);
-          return; // NO lo agregamos a la tabla
-        }
-    
-        // Si el código pertenece al cliente actual
-        if (resultado.message === "Código encontrado y pertenece al cliente actual") {
-          const descripcion = resultado.data?.Descripcion || "Descripción no disponible";
-    
-          const yaExiste = barcodes.some((b) => b.codigo === codigo);
-          if (!yaExiste) {
-            setBarcodes((prev) => [...prev, { codigo, descripcion }]);
-            setMensaje(`Código ${codigo} agregado correctamente.`);
-          } else {
-            setMensaje(`El código ${codigo} ya fue escaneado.`);
-          }
-        } else {
-          // fallback por si hay status true pero no encaja con lo anterior
-          setMensaje(resultado.message || "Código verificado.");
-        }
-    
-      } else {
-        setMensaje(resultado?.message || `El código ${codigo} no fue encontrado.`);
+      if (scannedBarcodes.length === 0 || !scannedBarcodes[0].rawValue) {
+        reproducirSonido("assets/sonidos/error.mp3");
+        setError("No se detectó un código válido.");
+        setShowAlert(true);
+        return;
       }
-    
-    } catch (e) {
-      setError("Error al verificar el código");
-      setShowAlert(true);
-    }
-    
+  
+      const codigo = scannedBarcodes[0].rawValue;
+      setUltimoCodigoEscaneado(codigo);
+  
+      try {
+        const resultado = await verificarBarra(codigo);
+  
+        if (resultado && resultado.status) {
+          const clienteid = sessionStorage.getItem("clienteid");
+  
+          if (resultado.data?.cliente && resultado.data?.cliente.id !== clienteid) {
+            reproducirSonido("assets/sonidos/error.mp3");
+            setError(`El código pertenece a otro cliente: ${resultado.data.cliente.nombre}`);
+            setShowAlert(true);
+            return;
+          }
+  
+          if (resultado.message === "Código encontrado y pertenece al cliente actual") {
+            const descripcion = resultado.data?.Descripcion || "Descripción no disponible";
+            const cantlavados = resultado.data?.cantlavados || "0";
+  
+            // ✅ Usamos la versión actualizada del estado en el callback
+            setBarcodes((prev) => {
+              const yaExiste = prev.some((b) => b.codigo === codigo);
+  
+              if (!yaExiste) {
+                reproducirSonido("assets/sonidos/bien.mp3");
+                //setError(`Código ${codigo} agregado correctamente.`);
+                //setAlertHeader("Éxito");
+                //setShowAlert(true);
+  
+                // Volvemos a escanear luego de un segundo
+                setTimeout(() => {
+                  scan();
+                }, 1000);
+  
+                return [...prev, { codigo, descripcion,cantlavados }];
+              } else {
+                reproducirSonido("assets/sonidos/error.mp3");
+                setError(`El código ${codigo} ya fue escaneado.`);
+                setShowAlert(true);
+                return prev; // No agregamos nada
+              }
+            });
+  
+          } else {
+            reproducirSonido("assets/sonidos/error.mp3");
+            setError(resultado.message || "Código verificado.");
+            setShowAlert(true);
+          }
+  
+        } else {
+          reproducirSonido("assets/sonidos/error.mp3");
+          setError(resultado?.message || `El código ${codigo} no fue encontrado.`);
+          setShowAlert(true);
+        }
+  
+      } catch (e) {
+        reproducirSonido("assets/sonidos/error.mp3");
+        setError("Error al verificar el código");
+        setShowAlert(true);
+      }
+  
+    }, 1000); 
   };
   
-
+  
+  
   const requestPermissions = async (): Promise<boolean> => {
     const { camera } = await BarcodeScanner.requestPermissions();
     return camera === 'granted' || camera === 'limited';
@@ -205,22 +345,12 @@ const Home: React.FC = () => {
               <span>Escanear</span>
             </IonButton>
   
-            {mensaje && (
-  <IonCard color="primary" style={{ marginTop: '16px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
-    <IonCardContent style={{ display: 'flex', alignItems: 'center' }}>
-      <IonIcon icon={informationCircle} style={{ fontSize: '22px', marginRight: '10px' }} />
-      <IonText color="light">
-        <strong>{mensaje}</strong>
-      </IonText>
-    </IonCardContent>
-  </IonCard>
-)}
-
+         
 {ultimoCodigoEscaneado && (
   <IonCard color="tertiary" style={{ marginTop: '20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
     <IonCardContent style={{ display: 'flex', alignItems: 'center' }}>
       <IonIcon icon={barcodeOutline} style={{ fontSize: '22px', marginRight: '10px' }} />
-      <IonText color="dark">
+      <IonText style={{ color: 'white' }}>
         <strong>Último escaneado:</strong>&nbsp;
         <span style={{ color: 'white', fontWeight: 'bold' }}>{ultimoCodigoEscaneado}</span>
       </IonText>
@@ -272,12 +402,35 @@ const Home: React.FC = () => {
             </div>
   
             <IonAlert
-              isOpen={showAlert}
-              onDidDismiss={() => setShowAlert(false)}
-              header={error ? "Error" : "Permiso denegado"}
-              message={error ? error : "Por favor concede el permiso de cámara para usar el escáner."}
-              buttons={['OK']}
-            />
+  isOpen={showAlert}
+  onDidDismiss={() => setShowAlert(false)}
+  header={alertHeader || 'Aviso'}
+  message={error || ''}
+  buttons={
+    alertHeader === 'Éxito' && nroMov // Mostrar los dos botones sólo si fue éxito
+      ? [
+          {
+            text: 'OK',
+            role: 'cancel',
+          },
+          {
+            text: 'Obtener PDF',
+            handler: () => {
+              generarPDF(nroMov);
+            },
+          },
+        ]
+      : [
+          {
+            text: 'OK',
+            role: 'cancel',
+          },
+        ]
+  }
+/>
+
+
+
           </IonCard>
         </IonContent>
       </IonPage>
