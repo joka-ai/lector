@@ -4,5 +4,33 @@
 <dict>
 	<key>IDEDidComputeMac32BitWarning</key>
 	<true/>
+
+	<!-- ⚙️ Acceso a Internet HTTP (no HTTPS) -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+
+	<!-- 🖼️ Permisos de galería (leer imágenes) -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Se necesita acceso a la galería para seleccionar imágenes</string>
+
+	<!-- 💾 Permiso para guardar imágenes -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Se necesita permiso para guardar imágenes en tu dispositivo</string>
+
+	<!-- 📷 Acceso a cámara (opcional, si usás camera) -->
+	<key>NSCameraUsageDescription</key>
+	<string>Se necesita acceso a la cámara para tomar fotos</string>
+
+	<!-- 📂 Acceso a archivos en modo compartido -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+
+	<!-- 📄 Abrir documentos desde otras apps -->
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 </dict>
 </plist>
+
