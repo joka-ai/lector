@@ -20,13 +20,20 @@ export const login = async (email: string, password: string, uuid: string = '') 
     const data = await response.json();
 
     // Guardar en sessionStorage
-    if (data.status) {
-      sessionStorage.setItem("clienteid", data.status.clienteid);
-      sessionStorage.setItem("nombre", data.status.nombre);
-      sessionStorage.setItem("nombre_cliente", data.status.nombre_cliente);
-      sessionStorage.setItem("email", email);
-      sessionStorage.setItem("operador", data.status.Operador_Ult_Mod);
-    }
+    // Guardar en sessionStorage
+if (data.status) {
+  sessionStorage.setItem("clienteid", data.status.clienteid);
+  sessionStorage.setItem("nombre", data.status.nombre);
+  sessionStorage.setItem("nombre_cliente", data.status.nombre_cliente);
+  sessionStorage.setItem("email", email);
+  sessionStorage.setItem("operador", data.status.Operador_Ult_Mod);
+
+  // Guardar id_empresa si existe
+  if (data.status.id_empresa) {
+    sessionStorage.setItem("id_empresa", data.status.id_empresa);
+  }
+}
+
 
     return data;
 

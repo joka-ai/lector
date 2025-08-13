@@ -1,0 +1,40 @@
+.fondo-login {
+  background-image: url('/assets/img/12.jpg');
+  background-size: cover;
+  background-position: center;
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.contenedor-botones {
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.boton-cuadro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 0;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  transition: transform 0.2s;
+}
+
+.boton-cuadro:hover {
+  transform: scale(1.05);
+}
+
+.texto-btn {
+  margin-top: 10px;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+}
